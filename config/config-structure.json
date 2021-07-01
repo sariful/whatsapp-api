@@ -9,7 +9,11 @@
             "timestamps": true,
             "freezeTableName": true
         },
-        "logging": false
+        "logging": false,
+        "webhook": {
+            "enabled": false,
+            "path": ""
+        }
     },
     "test": {
         "username": "root",
@@ -21,7 +25,11 @@
             "timestamps": true,
             "freezeTableName": true
         },
-        "logging": false
+        "logging": false,
+        "webhook": {
+            "enabled": false,
+            "path": ""
+        }
     },
     "development": {
         "username": "root",
@@ -33,6 +41,10 @@
             "timestamps": true,
             "freezeTableName": true
         },
-        "logging": false
+        "logging": false,
+        "webhook": {
+            "enabled": false,
+            "path": ""
+        }
     }
 }

@@ -62,6 +62,12 @@
     });
 
 
+
+    client.on("ready", () => {
+        console.log("Client is ready!");
+    });
+
+
     client.on("authenticated", (session) => {
         console.log("AUTH!");
         sessionCfg = session;
@@ -79,6 +85,24 @@
             //
         }
     });
+
+
+    client.on("auth_failure", () => {
+        console.log("AUTH Failed !");
+        sessionCfg = "";
+        process.exit();
+    });
+
+
+    client.on("message", msg => {
+        console.log(msg);
+        if (config.webhook.enabled) {
+            // axios.post(config.webhook.path, { msg });
+        }
+    });
+
+
+    // client.initialize();
 
     /**
      * end whatsapp api configs
