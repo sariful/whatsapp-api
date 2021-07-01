@@ -1,10 +1,11 @@
 (function () {
     "use strict";
-    const createError = require('http-errors');
-    const express = require('express');
-    const path = require('path');
-    const cookieParser = require('cookie-parser');
-
+    const createError = require("http-errors");
+    const express = require("express");
+    const path = require("path");
+    const cookieParser = require("cookie-parser");
+    const { Client } = require("whatsapp-web.js");
+    const fs = require("fs");
 
     // initialize express server
     const app = express();
@@ -25,9 +26,62 @@
     }));
     app.use(cookieParser());
     // static files server
-    app.use(express.static(path.join(__dirname, 'public')));
+    app.use(express.static(path.join(__dirname, "public")));
     /**
      * end express configs
+     */
+
+
+
+    /**
+     * whatsapp api configs
+     */
+    const SESSION_FILE_PATH = "./session.json";
+    let sessionCfg;
+    if (fs.existsSync(SESSION_FILE_PATH)) {
+        sessionCfg = require(SESSION_FILE_PATH);
+    } else {
+        console.log("no session file found");
+    }
+
+    global.client = new Client({
+        puppeteer: {
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--unhandled-rejections=strict"
+            ]
+        },
+        session: sessionCfg
+    });
+    global.isAuthenticated = false;
+
+    client.on("qr", qr => {
+        fs.writeFileSync("./components/last.qr", qr);
+    });
+
+
+    client.on("authenticated", (session) => {
+        console.log("AUTH!");
+        sessionCfg = session;
+
+        fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
+            if (err) {
+                console.error(err);
+            }
+            isAuthenticated = true;
+        });
+
+        try {
+            fs.unlinkSync("./components/last.qr");
+        } catch (err) {
+            //
+        }
+    });
+
+    /**
+     * end whatsapp api configs
      */
 
 
@@ -39,8 +93,8 @@
         res.send({});
     });
     // api route
-    const apiRouter = require('./routes/api');
-    app.use('/api', apiRouter);
+    const apiRouter = require("./routes/api");
+    app.use("/api", apiRouter);
 
 
     /**
@@ -59,14 +113,14 @@
         next(createError(404));
     });
 
-    app.use(function (err, req, res, next) {
+    app.use(function (err, req, res) {
         // set locals, only providing error in development
         res.locals.message = err.message;
-        res.locals.error = req.app.get('env') === 'development' ? err : {};
+        res.locals.error = req.app.get("env") === "development" ? err : {};
 
         // render the error page
         res.status(err.status || 500);
-        res.render('error');
+        res.render("error");
     });
 
     module.exports = app;
