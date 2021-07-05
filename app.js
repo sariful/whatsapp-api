@@ -4,8 +4,9 @@
     const express = require("express");
     const path = require("path");
     const cookieParser = require("cookie-parser");
-    const { Client } = require("whatsapp-web.js");
-    const fs = require("fs");
+    const session = require("cookie-session");
+    // const { Client } = require("whatsapp-web.js");
+    // const fs = require("fs");
 
     // initialize express server
     const app = express();
@@ -25,8 +26,20 @@
         extended: false
     }));
     app.use(cookieParser());
+    app.use(session({
+        secret: "ssh"
+    }));
     // static files server
     app.use(express.static(path.join(__dirname, "public")));
+
+    // cors error
+    app.use(function (req, res, next) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, jwt-token");
+        res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
+        next();
+    });
+
     /**
      * end express configs
      */
@@ -35,14 +48,16 @@
 
     /**
      * whatsapp api configs
-     */
-    const SESSION_FILE_PATH = "./session.json";
+     *
+    const SESSION_FILE_PATH = "../session.json";
     let sessionCfg;
     if (fs.existsSync(SESSION_FILE_PATH)) {
         sessionCfg = require(SESSION_FILE_PATH);
     } else {
         console.log("no session file found");
     }
+
+    console.log(sessionCfg);
 
     global.client = new Client({
         puppeteer: {
@@ -58,7 +73,9 @@
     global.isAuthenticated = false;
 
     client.on("qr", qr => {
-        fs.writeFileSync("./components/last.qr", qr);
+        console.log("qr code generated");
+        global.qr = qr;
+        fs.writeFileSync("./utils/last.qr", qr);
     });
 
 
@@ -69,7 +86,7 @@
 
 
     client.on("authenticated", (session) => {
-        console.log("AUTH!");
+        console.log("AUTH!", { session });
         sessionCfg = session;
 
         fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
@@ -80,7 +97,7 @@
         });
 
         try {
-            fs.unlinkSync("./components/last.qr");
+            fs.unlinkSync("./utils/last.qr");
         } catch (err) {
             //
         }
@@ -90,7 +107,23 @@
     client.on("auth_failure", () => {
         console.log("AUTH Failed !");
         sessionCfg = "";
+        fs.unlinkSync("../session.json");
+
         process.exit();
+    });
+
+
+    client.on("change_state", state => {
+        console.log("CHANGE STATE", state);
+    });
+
+
+
+    client.on("disconnected", (reason) => {
+        console.log("Client was logged out", reason);
+        sessionCfg = "";
+        fs.unlinkSync("../session.json");
+
     });
 
 
@@ -102,7 +135,7 @@
     });
 
 
-    // client.initialize();
+    client.initialize();
 
     /**
      * end whatsapp api configs

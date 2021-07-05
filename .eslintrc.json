@@ -8,7 +8,8 @@
     "globals": {
         "config": true,
         "client": true,
-        "isAuthenticated": true
+        "isAuthenticated": true,
+        "qr": true
     },
     "extends": "eslint:recommended",
     "parserOptions": {
