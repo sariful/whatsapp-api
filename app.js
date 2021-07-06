@@ -1,15 +1,25 @@
 (function () {
     "use strict";
-    const createError = require("http-errors");
+    // const createError = require("http-errors");
     const express = require("express");
     const path = require("path");
     const cookieParser = require("cookie-parser");
     const session = require("cookie-session");
-    // const { Client } = require("whatsapp-web.js");
+    const { Client } = require("whatsapp-web.js");
+    const jwt = require("jsonwebtoken");
     // const fs = require("fs");
 
     // initialize express server
     const app = express();
+    const server = require("http").Server(app);
+
+
+    const io = require("socket.io")(server, {
+        cors: {
+            origin: "*"
+        }
+    });
+
 
 
     const env = process.env.NODE_ENV || "development";
@@ -46,96 +56,120 @@
 
 
 
+
     /**
-     * whatsapp api configs
-     *
-    const SESSION_FILE_PATH = "../session.json";
-    let sessionCfg;
-    if (fs.existsSync(SESSION_FILE_PATH)) {
-        sessionCfg = require(SESSION_FILE_PATH);
-    } else {
-        console.log("no session file found");
-    }
+     * setup of socket io whatsapp api
+     */
+    io.on("connection", (socket) => {
+        console.log(`user connected: ${socket.id}`);
+        const jwt_secret = "hello";
 
-    console.log(sessionCfg);
+        let sessionCfg;
 
-    global.client = new Client({
-        puppeteer: {
-            headless: true,
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--unhandled-rejections=strict"
-            ]
-        },
-        session: sessionCfg
-    });
-    global.isAuthenticated = false;
+        const token = socket.handshake.auth.jwt_token;
+        if (token) {
+            sessionCfg = jwt.verify(token, jwt_secret);
+        }
 
-    client.on("qr", qr => {
-        console.log("qr code generated");
-        global.qr = qr;
-        fs.writeFileSync("./utils/last.qr", qr);
-    });
-
-
-
-    client.on("ready", () => {
-        console.log("Client is ready!");
-    });
-
-
-    client.on("authenticated", (session) => {
-        console.log("AUTH!", { session });
-        sessionCfg = session;
-
-        fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
-            if (err) {
-                console.error(err);
-            }
-            isAuthenticated = true;
+        const whatsapp_client = new Client({
+            puppeteer: {
+                headless: true,
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--unhandled-rejections=strict"
+                ]
+            },
+            session: sessionCfg,
         });
 
-        try {
-            fs.unlinkSync("./utils/last.qr");
-        } catch (err) {
-            //
-        }
+        whatsapp_client.on("qr", qr => {
+            console.log("qr code generated");
+            socket.emit("qr", qr);
+        });
+
+
+        whatsapp_client.on("ready", () => {
+            console.log("Client is ready!");
+            socket.emit("ready", "Server is ready to send or receive message");
+        });
+
+        whatsapp_client.on("authenticated", (session) => {
+            console.log("Authenticated!");
+            sessionCfg = session;
+
+            const jwt_token = jwt.sign(session, jwt_secret);
+            socket.emit("authenticated", jwt_token);
+        });
+
+
+
+
+        whatsapp_client.on("auth_failure", () => {
+            console.log("AUTH Failed !");
+
+            socket.emit("auth_failure", "Authentication Failed");
+        });
+
+
+        whatsapp_client.on("change_state", state => {
+            console.log("CHANGE STATE", state);
+
+            socket.emit("change_state", state);
+        });
+
+
+
+        whatsapp_client.on("disconnected", (reason) => {
+            console.log("Client was logged out", reason);
+            sessionCfg = "";
+
+            socket.emit("disconnected", reason);
+        });
+
+
+        whatsapp_client.on("message", msg => {
+            console.log(msg.from, msg.body);
+
+            socket.emit("message", msg);
+        });
+
+
+        whatsapp_client.initialize();
+
+        socket.on("getContacts", async () => {
+            const result = await whatsapp_client.getContacts();
+
+            socket.emit("gotContacts", result);
+        });
+
+
+        socket.on("message", async sendData => {
+            const sanitized_number = sendData.number.replace(/[- )(]/g, "");
+            const final_number = `91${sanitized_number.substring(sanitized_number.length - 10)}`;
+
+            const number_details = await whatsapp_client.getNumberId(final_number);
+
+            if (number_details) {
+                console.log(number_details._serialized);
+                whatsapp_client.sendMessage(number_details._serialized, sendData.message);
+            } else {
+                console.log(final_number);
+            }
+        });
+
+        socket.on("disconnect", function () {
+            whatsapp_client.destroy();
+            console.log("User has disconnected: " + socket.id);
+        });
+
+
+        socket.on("logout", () => {
+            whatsapp_client.logout();
+        });
     });
 
 
-    client.on("auth_failure", () => {
-        console.log("AUTH Failed !");
-        sessionCfg = "";
-        fs.unlinkSync("../session.json");
-
-        process.exit();
-    });
-
-
-    client.on("change_state", state => {
-        console.log("CHANGE STATE", state);
-    });
-
-
-
-    client.on("disconnected", (reason) => {
-        console.log("Client was logged out", reason);
-        sessionCfg = "";
-        fs.unlinkSync("../session.json");
-
-    });
-
-
-    client.on("message", msg => {
-        console.log(msg);
-        if (config.webhook.enabled) {
-            // axios.post(config.webhook.path, { msg });
-        }
-    });
-
-
-    client.initialize();
 
     /**
      * end whatsapp api configs
@@ -145,7 +179,7 @@
 
     /**
      * routing
-     */
+     * // no routing required at this moment
     app.get("/", (req, res) => {
         res.send({});
     });
@@ -163,7 +197,7 @@
 
     /**
      * error handler
-     */
+     *
 
     // catch 404 and forward to error handler
     app.use(function (req, res, next) {
@@ -180,6 +214,15 @@
         res.render("error");
     });
 
-    module.exports = app;
+    server.listen(5200, function () {
+        console.log("listening on port: 5200");
+    });
+    /**
+     * end error handler
+     */
+    module.exports = {
+        server,
+        app
+    };
 })();
 
