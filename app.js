@@ -129,9 +129,11 @@
 
 
         whatsapp_client.on("message", msg => {
-            console.log(msg.from, msg.body);
+            if (msg.from != "status@broadcast") {
+                console.log(msg.from, msg.body);
 
-            socket.emit("message", msg);
+                socket.emit("message", msg);
+            }
         });
 
 
@@ -145,17 +147,28 @@
 
 
         socket.on("message", async sendData => {
-            const sanitized_number = sendData.number.replace(/[- )(]/g, "");
-            const final_number = `91${sanitized_number.substring(sanitized_number.length - 10)}`;
+            if (sendData.number) {
+                const sanitized_number = sendData.number.toString().replace(/[- )(]/g, "");
+                const final_number = `91${sanitized_number.substring(sanitized_number.length - 10)}`;
 
-            const number_details = await whatsapp_client.getNumberId(final_number);
+                const number_details = await whatsapp_client.getNumberId(final_number);
 
-            if (number_details) {
-                console.log(number_details._serialized);
-                whatsapp_client.sendMessage(number_details._serialized, sendData.message);
-            } else {
-                console.log(final_number);
+                if (number_details) {
+                    console.log(number_details._serialized);
+                    const sendMessageData = await whatsapp_client.sendMessage(number_details._serialized, sendData.message);
+                    console.log(sendMessageData.id.id);
+                } else {
+                    console.log(final_number);
+                }
             }
+        });
+
+        whatsapp_client.on("message_ack", (message, ack) => {
+            console.log("Id ", message.id.id);
+            console.log("Ack " + ack);
+
+            socket.emit("message_ack", message.id);
+
         });
 
         socket.on("disconnect", function () {
@@ -179,7 +192,7 @@
 
     /**
      * routing
-     * // no routing required at this moment
+     * // no routing required at this moment */
     app.get("/", (req, res) => {
         res.send({});
     });
