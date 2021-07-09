@@ -91,7 +91,7 @@
 
         whatsapp_client.on("ready", () => {
             console.log("Client is ready!");
-            socket.emit("ready", "Server is ready to send or receive message");
+            socket.emit("ready", "WhatsApp is ready to send or receive message");
         });
 
         whatsapp_client.on("authenticated", (session) => {
@@ -137,7 +137,9 @@
         });
 
 
-        whatsapp_client.initialize();
+        // whatsapp_client.initialize();
+        whatsapp_client.initialize().catch(_ => _);
+
 
         socket.on("getContacts", async () => {
             const result = await whatsapp_client.getContacts();
@@ -172,7 +174,11 @@
         });
 
         socket.on("disconnect", function () {
-            whatsapp_client.destroy();
+            console.log("closing window");
+            setTimeout(() => {
+                console.log("window closed");
+            }, 10000);
+            // whatsapp_client.destroy();
             console.log("User has disconnected: " + socket.id);
         });
 
