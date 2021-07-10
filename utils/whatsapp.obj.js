@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const path = require("path");
+const fs = require("fs");
 const { Client, MessageMedia } = require("whatsapp-web.js");
 
 class WhatsApp {
@@ -111,6 +112,9 @@ class WhatsApp {
                         console.log(number_details._serialized);
                         const sendMessageData = await whatsapp_client.sendMessage(number_details._serialized, media, sendData.message);
                         const sendMessageData2 = await whatsapp_client.sendMessage(number_details._serialized, sendData.message);
+
+                        fs.unlinkSync(sendData.file_path);
+
                         console.log(sendMessageData.id.id, sendMessageData2.id.id);
                         if (sendMessageData.id.id) {
                             socket.emit("message_sent", sendMessageData);
