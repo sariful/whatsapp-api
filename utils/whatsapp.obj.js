@@ -89,7 +89,9 @@ class WhatsApp {
 
 
             // whatsapp_client.initialize();
-            whatsapp_client.initialize().catch(_ => _);
+            whatsapp_client.initialize().catch(error => {
+                console.log(error);
+            });
 
 
             socket.on("getContacts", async () => {
