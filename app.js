@@ -5,8 +5,7 @@
     const path = require("path");
     const cookieParser = require("cookie-parser");
     const session = require("cookie-session");
-    const { Client } = require("whatsapp-web.js");
-    const jwt = require("jsonwebtoken");
+    const whatsappObj = require("./utils/whatsapp.obj");
     // const fs = require("fs");
 
     // initialize express server
@@ -19,6 +18,10 @@
             origin: "*"
         }
     });
+
+    const whatsapp = new whatsappObj(io);
+    whatsapp.connect();
+
 
 
 
@@ -60,133 +63,7 @@
     /**
      * setup of socket io whatsapp api
      */
-    io.on("connection", (socket) => {
-        console.log(`user connected: ${socket.id}`);
-        const jwt_secret = "hello";
 
-        let sessionCfg;
-
-        const token = socket.handshake.auth.jwt_token;
-        if (token) {
-            sessionCfg = jwt.verify(token, jwt_secret);
-        }
-
-        const whatsapp_client = new Client({
-            puppeteer: {
-                headless: true,
-                args: [
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--unhandled-rejections=strict"
-                ]
-            },
-            session: sessionCfg,
-        });
-
-        whatsapp_client.on("qr", qr => {
-            console.log("qr code generated");
-            socket.emit("qr", qr);
-        });
-
-
-        whatsapp_client.on("ready", () => {
-            console.log("Client is ready!");
-            socket.emit("ready", "WhatsApp is ready to send or receive message");
-        });
-
-        whatsapp_client.on("authenticated", (session) => {
-            console.log("Authenticated!");
-            sessionCfg = session;
-
-            const jwt_token = jwt.sign(session, jwt_secret);
-            socket.emit("authenticated", jwt_token);
-        });
-
-
-
-
-        whatsapp_client.on("auth_failure", () => {
-            console.log("AUTH Failed !");
-
-            socket.emit("auth_failure", "Authentication Failed");
-        });
-
-
-        whatsapp_client.on("change_state", state => {
-            console.log("CHANGE STATE", state);
-
-            socket.emit("change_state", state);
-        });
-
-
-
-        whatsapp_client.on("disconnected", (reason) => {
-            console.log("Client was logged out", reason);
-            sessionCfg = "";
-
-            socket.emit("disconnected", reason);
-        });
-
-
-        whatsapp_client.on("message", msg => {
-            if (msg.from != "status@broadcast") {
-                console.log(msg.from, msg.body);
-
-                socket.emit("message", msg);
-            }
-        });
-
-
-        // whatsapp_client.initialize();
-        whatsapp_client.initialize().catch(_ => _);
-
-
-        socket.on("getContacts", async () => {
-            const result = await whatsapp_client.getContacts();
-
-            socket.emit("gotContacts", result);
-        });
-
-
-        socket.on("message", async sendData => {
-            if (sendData.number) {
-                const sanitized_number = sendData.number.toString().replace(/[- )(]/g, "");
-                const final_number = `91${sanitized_number.substring(sanitized_number.length - 10)}`;
-
-                const number_details = await whatsapp_client.getNumberId(final_number);
-
-                if (number_details) {
-                    console.log(number_details._serialized);
-                    const sendMessageData = await whatsapp_client.sendMessage(number_details._serialized, sendData.message);
-                    console.log(sendMessageData.id.id);
-                } else {
-                    console.log(final_number);
-                }
-            }
-        });
-
-        whatsapp_client.on("message_ack", (message, ack) => {
-            console.log("Id ", message.id.id);
-            console.log("Ack " + ack);
-
-            socket.emit("message_ack", message.id);
-
-        });
-
-        socket.on("disconnect", function () {
-            console.log("closing window");
-            setTimeout(() => {
-                console.log("window closed");
-            }, 10000);
-            // whatsapp_client.destroy();
-            console.log("User has disconnected: " + socket.id);
-        });
-
-
-        socket.on("logout", () => {
-            whatsapp_client.logout();
-        });
-    });
 
 
 
