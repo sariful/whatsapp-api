@@ -1,24 +1,10 @@
 {
     "production": {
-        "username": "root",
+        "port": 5200,
+        "username": "user",
         "password": "pass",
         "database": "whatsapp_api",
-        "host": "localhost",
-        "dialect": "mysql",
-        "define": {
-            "timestamps": true,
-            "freezeTableName": true
-        },
-        "logging": false,
-        "webhook": {
-            "enabled": false,
-            "path": ""
-        }
-    },
-    "test": {
-        "username": "root",
-        "password": "pass",
-        "database": "whatsapp_api",
+        "main_database": "whatsapp_api",
         "host": "localhost",
         "dialect": "mysql",
         "define": {
@@ -32,9 +18,11 @@
         }
     },
     "development": {
-        "username": "root",
-        "password": "pass*2469#",
+        "port": 5200,
+        "username": "user",
+        "password": "pass",
         "database": "whatsapp_api",
+        "main_database": "whatsapp_api",
         "host": "localhost",
         "dialect": "mysql",
         "define": {
