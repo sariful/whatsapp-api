@@ -26,9 +26,11 @@ class WhatsApp {
                 puppeteer: {
                     headless: true,
                     args: [
-                        // "--no-sandbox",
+                        "--no-sandbox",
                         "--disable-setuid-sandbox",
-                        "--unhandled-rejections=strict"
+                        "--unhandled-rejections=strict",
+                        "--disable-dev-shm-usage",
+                        "--fast-start",
                     ]
                 },
                 session: sessionCfg,
