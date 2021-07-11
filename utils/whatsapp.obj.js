@@ -26,7 +26,7 @@ class WhatsApp {
                 puppeteer: {
                     headless: true,
                     args: [
-                        "--no-sandbox",
+                        // "--no-sandbox",
                         "--disable-setuid-sandbox",
                         "--unhandled-rejections=strict"
                     ]
